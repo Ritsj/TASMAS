@@ -165,27 +165,32 @@ def main(args):
     corrections = load_corrections(config.get('corrections'), inputDir)
 
     operation = config['operationMode']
-    if operation in ['recognize', 'semiauto', 'fullauto']:
-        extension = config.get('extension')
-        check_names_extension = extension.strip() if extension else 'ogg'
-    else:
-        check_names_extension = 'words.json'
+    names = None
+    if operation != 'summarize':
+        # 'summarize' alone only needs transcript.txt (checked in summarize()); it
+        # doesn't touch per-speaker audio/words.json files, so skip this discovery
+        # and avoid forcing those files to still exist for a summarize-only run.
+        if operation in ['recognize', 'semiauto', 'fullauto']:
+            extension = config.get('extension')
+            check_names_extension = extension.strip() if extension else 'ogg'
+        else:
+            check_names_extension = 'words.json'
 
-    files = glob.glob(os.path.join(inputDir, f"*.{check_names_extension}"))
+        files = glob.glob(os.path.join(inputDir, f"*.{check_names_extension}"))
 
-    if not files:
+        if not files:
+            print()
+            print(f" No {check_names_extension} files were found at {inputDir}.")
+            print()
+            sys.exit()
+
+        print(f" Found {len(files)} files to work on at {inputDir}:")
         print()
-        print(f" No {check_names_extension} files were found at {inputDir}.")
+        for file in files:
+            filename = os.path.basename(file)
+            print(f'  - {filename}')
         print()
-        sys.exit()
-
-    print(f" Found {len(files)} files to work on at {inputDir}:")
-    print()
-    for file in files:
-        filename = os.path.basename(file)
-        print(f'  - {filename}')
-    print()
-    names = check_names(load_names(config.get('names'), inputDir), files, check_names_extension)
+        names = check_names(load_names(config.get('names'), inputDir), files, check_names_extension)
 
     openai_api_key = config.get('openApiKey')
     prompt_type = config.get('promptType')
