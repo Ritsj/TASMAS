@@ -193,6 +193,7 @@ def main(args):
         names = check_names(load_names(config.get('names'), inputDir), files, check_names_extension)
 
     anthropic_api_key = config.get('anthropicApiKey')
+    use_subscription = config.get('useSubscription', False)
     prompt_type = config.get('promptType')
     prompt_files = []
     if operation in ['summarize', 'fullauto']:
@@ -203,16 +204,16 @@ def main(args):
         if not prompt_files:
             print("  At least one prompt file must be found for summarize (or fullauto) operation mode.")
             sys.exit()
-        if (anthropic_api_key is None) or (anthropic_api_key == ''):
-            print("  Anthropic API key is required for summarize (or fullauto) operation mode.")
+        if not use_subscription and ((anthropic_api_key is None) or (anthropic_api_key == '')):
+            print("  Anthropic API key is required for summarize (or fullauto) operation mode (or pass --useSubscription to use your Claude subscription instead).")
             sys.exit()
 
     operation_modes = {
         'recognize': lambda: recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')),
         'assemble': lambda: assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps),
-        'summarize': lambda: summarize(inputDir, prompt_files, anthropic_api_key),
+        'summarize': lambda: summarize(inputDir, prompt_files, anthropic_api_key, use_subscription),
         'semiauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps)],
-        'fullauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps), summarize(inputDir, prompt_files, anthropic_api_key)]
+        'fullauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps), summarize(inputDir, prompt_files, anthropic_api_key, use_subscription)]
     }
 
     print("--------------------")

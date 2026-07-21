@@ -85,6 +85,17 @@ For each prompt file found, the Claude API is called (model `claude-opus-4-8`), 
 So yes, it's not free, but it's usage-based and typically inexpensive per prompt.  
 (And you don't ever have to use the SUMMARIZE workload at all if you don't want anyway. 😁)
 
+### Using your Claude subscription instead of an API key
+If you already pay for Claude Pro, Max, or Team, you can use that instead of paying per-token: pass `--useSubscription` in place of `--anthropicApiKey`. This routes the summarize call through the Claude Agent SDK, authenticated the same way Claude Code is (subscription usage, not metered API billing) — subject to your subscription's usage limits rather than a per-token cost.
+
+Requires:
+1. `pip install claude-agent-sdk`
+2. The Claude Code CLI installed and logged in — run `claude setup-token` once (or just be logged in via `claude login`).
+
+```bash
+tasmas summarize /mnt/c/recordings/2024-04-04 --promptType dnd --useSubscription
+```
+
 # Usage
 
 To run TASMAS, you must provide at minimum:

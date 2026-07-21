@@ -115,7 +115,16 @@ Built-in types include "generic" (system-agnostic) and
     summarizeConfigGroup.add_argument('--anthropicApiKey', type=str, help='''The summarize operation calls the Claude API (model
 "claude-opus-4-8") to summarize the transcript. An
 Anthropic API key is required to run in summarize (or
-fullauto) mode.
+fullauto) mode, unless --useSubscription is given instead.
+''')
+    summarizeConfigGroup.add_argument('--useSubscription', action='store_true', help='''Use your Claude subscription (Pro/Max/Team) via the Claude
+Agent SDK instead of the pay-per-token Anthropic API, so
+usage draws from your subscription instead of a metered bill.
+Requires the `claude-agent-sdk` package (pip install
+claude-agent-sdk) plus the Claude Code CLI logged in --
+run `claude setup-token` once, or just be logged in via
+`claude login`. Makes --anthropicApiKey unnecessary. Subject
+to your subscription's usage limits rather than metered cost.
 ''')
 
     config = vars(parser.parse_args(args))

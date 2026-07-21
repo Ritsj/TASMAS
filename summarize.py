@@ -1,9 +1,11 @@
 import os
 import sys
+import asyncio
 import textwrap
 import anthropic
 
 MODEL = "claude-opus-4-8"
+SYSTEM_PROMPT = "You are a chatbot which can summarize long transcripts."
 
 def do_summary(transcript, client, prompt_file):
     with open(prompt_file, 'r') as file:
@@ -13,7 +15,7 @@ def do_summary(transcript, client, prompt_file):
         model=MODEL,
         max_tokens=64000,
         thinking={"type": "adaptive"},
-        system="You are a chatbot which can summarize long transcripts.",
+        system=SYSTEM_PROMPT,
         messages=[
             {"role": "user", "content": f'{prompt}{transcript}'},
         ],
@@ -22,7 +24,37 @@ def do_summary(transcript, client, prompt_file):
 
     return next(block.text for block in message.content if block.type == "text")
 
-def summarize(input_dir, prompt_files, anthropic_api_key):
+def do_summary_via_subscription(transcript, prompt_file):
+    try:
+        from claude_agent_sdk import query, ClaudeAgentOptions, AssistantMessage, TextBlock
+    except ImportError:
+        print("  The claude-agent-sdk package is required for --useSubscription.")
+        print("  Install it with: pip install claude-agent-sdk")
+        print("  (Also requires the Claude Code CLI to be installed and logged in --")
+        print("   run `claude setup-token`, or just be logged in via `claude login`.)")
+        sys.exit(1)
+
+    with open(prompt_file, 'r') as file:
+        prompt = file.read()
+
+    async def run():
+        options = ClaudeAgentOptions(
+            model=MODEL,
+            system_prompt=SYSTEM_PROMPT,
+            tools=[],
+            max_turns=1,
+        )
+        text_parts = []
+        async for message in query(prompt=f'{prompt}{transcript}', options=options):
+            if isinstance(message, AssistantMessage):
+                for block in message.content:
+                    if isinstance(block, TextBlock):
+                        text_parts.append(block.text)
+        return ''.join(text_parts)
+
+    return asyncio.run(run())
+
+def summarize(input_dir, prompt_files, anthropic_api_key, use_subscription=False):
 
     if input_dir is None:
         print("Please provide an input directory.")
@@ -46,14 +78,20 @@ def summarize(input_dir, prompt_files, anthropic_api_key):
         print("  No prompts to use to summarize.")
         return
 
-    client = anthropic.Anthropic(api_key=anthropic_api_key)
+    if use_subscription:
+        print("  Using your Claude subscription (via the Claude Agent SDK) instead of the API key.")
+    else:
+        client = anthropic.Anthropic(api_key=anthropic_api_key)
 
     for prompt_file in prompt_files:
         # Call your command here
         print()
         print(f"  - Prompt {prompt_file}...")
 
-        summary = do_summary(transcript, client, prompt_file)
+        if use_subscription:
+            summary = do_summary_via_subscription(transcript, prompt_file)
+        else:
+            summary = do_summary(transcript, client, prompt_file)
 
         filename = os.path.splitext(os.path.basename(prompt_file))[0].replace("prompt_", "")
         filename = f"summary_{filename}.txt"
