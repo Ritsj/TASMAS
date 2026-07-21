@@ -126,6 +126,33 @@ run `claude setup-token` once, or just be logged in via
 `claude login`. Makes --anthropicApiKey unnecessary. Subject
 to your subscription's usage limits rather than metered cost.
 ''')
+    summarizeConfigGroup.add_argument('--useLocal', action='store_true', help='''Use a locally-running Ollama model instead of the Claude API
+or your subscription, at no per-call cost. Requires the
+`ollama` package (pip install ollama) and a local Ollama
+server (`ollama serve`) with the model already pulled (e.g.
+`ollama pull phi4-mini`). Makes --anthropicApiKey unnecessary.
+Mutually exclusive with --useSubscription.
+''')
+    summarizeConfigGroup.add_argument('--localModel', type=str, default='phi4-mini', help='''Which Ollama model to use with --useLocal. Defaults to
+"phi4-mini". Must already be pulled (`ollama pull <model>`)
+and support a large enough context window for your transcript
+length (see --localContextTokens).
+''')
+    summarizeConfigGroup.add_argument('--localHost', type=str, help='''Ollama server URL to use with --useLocal. Defaults to
+Ollama's own default resolution (usually
+http://127.0.0.1:11434, or the OLLAMA_HOST environment
+variable).
+''')
+    summarizeConfigGroup.add_argument('--localContextTokens', type=int, default=32768, help='''Context window size (num_ctx) to request from Ollama with
+--useLocal. Ollama defaults to a small context window
+(commonly just 4096 tokens, run `ollama serve` to check yours)
+regardless of what the model supports, and silently truncates
+input that doesn't fit rather than erroring -- this needs to
+be large enough for your prompt plus transcript (D&D sessions
+typically run 30,000-60,000 tokens). A larger value uses
+proportionally more RAM for the context cache, so raise it
+carefully on memory-constrained or CPU-only machines.
+''')
 
     config = vars(parser.parse_args(args))
     

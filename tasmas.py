@@ -194,9 +194,16 @@ def main(args):
 
     anthropic_api_key = config.get('anthropicApiKey')
     use_subscription = config.get('useSubscription', False)
+    use_local = config.get('useLocal', False)
+    local_model = config.get('localModel', 'phi4-mini')
+    local_host = config.get('localHost')
+    local_context_tokens = config.get('localContextTokens', 32768)
     prompt_type = config.get('promptType')
     prompt_files = []
     if operation in ['summarize', 'fullauto']:
+        if use_local and use_subscription:
+            print("  --useLocal and --useSubscription are mutually exclusive -- pick one summarize backend.")
+            sys.exit()
         if (prompt_type is None) or (prompt_type == ''):
             print("  Prompt Type is required for summarize (or fullauto) operation mode.")
             sys.exit()
@@ -204,16 +211,16 @@ def main(args):
         if not prompt_files:
             print("  At least one prompt file must be found for summarize (or fullauto) operation mode.")
             sys.exit()
-        if not use_subscription and ((anthropic_api_key is None) or (anthropic_api_key == '')):
-            print("  Anthropic API key is required for summarize (or fullauto) operation mode (or pass --useSubscription to use your Claude subscription instead).")
+        if not use_local and not use_subscription and ((anthropic_api_key is None) or (anthropic_api_key == '')):
+            print("  Anthropic API key is required for summarize (or fullauto) operation mode (or pass --useSubscription / --useLocal to use an alternative backend).")
             sys.exit()
 
     operation_modes = {
         'recognize': lambda: recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')),
         'assemble': lambda: assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps),
-        'summarize': lambda: summarize(inputDir, prompt_files, anthropic_api_key, use_subscription),
+        'summarize': lambda: summarize(inputDir, prompt_files, anthropic_api_key, use_subscription, use_local, local_model, local_host, local_context_tokens),
         'semiauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps)],
-        'fullauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps), summarize(inputDir, prompt_files, anthropic_api_key, use_subscription)]
+        'fullauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps), summarize(inputDir, prompt_files, anthropic_api_key, use_subscription, use_local, local_model, local_host, local_context_tokens)]
     }
 
     print("--------------------")

@@ -96,6 +96,24 @@ Requires:
 tasmas summarize /mnt/c/recordings/2024-04-04 --promptType dnd --useSubscription
 ```
 
+### Using a local model instead (no cloud, no cost)
+Pass `--useLocal` to summarize with a locally-running [Ollama](https://ollama.com) model instead of the Claude API or your subscription — nothing leaves your machine, and there's no per-call cost.
+
+Requires:
+1. `pip install ollama`
+2. A local Ollama server running (`ollama serve`) with the model already pulled (e.g. `ollama pull phi4-mini`)
+
+```bash
+tasmas summarize /mnt/c/recordings/2024-04-04 --promptType dnd --useLocal
+```
+
+By default this uses the `phi4-mini` model (128K context window, ~2.5GB, small enough to run on CPU). Ollama itself defaults to a much smaller context window regardless of what the model supports (often just 4096 tokens — check what yours reports on startup), and **silently truncates** input that doesn't fit rather than erroring, so TASMAS explicitly requests a larger one via `--localContextTokens` (default `32768`). D&D session transcripts typically run 30,000-60,000 tokens, so:
+ - Raise `--localContextTokens` if you have the RAM for it (context cache size scales with this value — on a CPU-only or memory-constrained machine, this is the main thing that can go wrong; TASMAS will print a warning if your transcript looks like it's close to or over the configured window).
+ - Use `--localModel` to pick a different Ollama model, provided it's already pulled and supports enough context for your transcript.
+ - Use `--localHost` if your Ollama server isn't at the default `http://127.0.0.1:11434`.
+
+Expect this to be noticeably slower than the API or subscription paths, especially on CPU-only hardware — there's no timeout, but a 30-60K token summarization pass can take a while.
+
 # Usage
 
 To run TASMAS, you must provide at minimum:

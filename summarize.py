@@ -54,7 +54,47 @@ def do_summary_via_subscription(transcript, prompt_file):
 
     return asyncio.run(run())
 
-def summarize(input_dir, prompt_files, anthropic_api_key, use_subscription=False):
+def do_summary_via_ollama(transcript, prompt_file, local_model, local_host, local_context_tokens):
+    try:
+        from ollama import Client
+    except ImportError:
+        print("  The ollama package is required for --useLocal.")
+        print("  Install it with: pip install ollama")
+        print("  (Also requires a local Ollama server -- `ollama serve` -- with the")
+        print(f"   model pulled: `ollama pull {local_model}`.)")
+        sys.exit(1)
+
+    with open(prompt_file, 'r') as file:
+        prompt = file.read()
+
+    # Rough token estimate: word count alone underestimates tokens (English
+    # runs ~1.3 tokens/word), so scale it up. Ollama truncates input that
+    # doesn't fit num_ctx rather than raising an error, so warn early instead
+    # of silently summarizing a truncated transcript.
+    word_count = len((prompt + transcript).split())
+    approx_tokens = int(word_count * 1.3)
+    if approx_tokens > local_context_tokens * 0.75:
+        print(f"  WARNING: this prompt is roughly {approx_tokens} tokens, close to or over the")
+        print(f"  configured context window ({local_context_tokens} tokens, --localContextTokens).")
+        print("  Ollama silently truncates input that doesn't fit rather than erroring --")
+        print("  consider raising --localContextTokens (memory permitting).")
+
+    print(f"  Generating with local Ollama model '{local_model}' -- this can be slow on CPU-only hardware.")
+
+    client = Client(host=local_host) if local_host else Client()
+
+    response = client.chat(
+        model=local_model,
+        messages=[
+            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "user", "content": f'{prompt}{transcript}'},
+        ],
+        options={"num_ctx": local_context_tokens},
+    )
+
+    return response.message.content
+
+def summarize(input_dir, prompt_files, anthropic_api_key, use_subscription=False, use_local=False, local_model="phi4-mini", local_host=None, local_context_tokens=32768):
 
     if input_dir is None:
         print("Please provide an input directory.")
@@ -80,7 +120,7 @@ def summarize(input_dir, prompt_files, anthropic_api_key, use_subscription=False
 
     if use_subscription:
         print("  Using your Claude subscription (via the Claude Agent SDK) instead of the API key.")
-    else:
+    elif not use_local:
         client = anthropic.Anthropic(api_key=anthropic_api_key)
 
     for prompt_file in prompt_files:
@@ -88,7 +128,9 @@ def summarize(input_dir, prompt_files, anthropic_api_key, use_subscription=False
         print()
         print(f"  - Prompt {prompt_file}...")
 
-        if use_subscription:
+        if use_local:
+            summary = do_summary_via_ollama(transcript, prompt_file, local_model, local_host, local_context_tokens)
+        elif use_subscription:
             summary = do_summary_via_subscription(transcript, prompt_file)
         else:
             summary = do_summary(transcript, client, prompt_file)
