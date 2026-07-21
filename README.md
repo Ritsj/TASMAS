@@ -75,6 +75,7 @@ TASMAS ships with prompt sets for a few systems, each tuned to what that system 
  - `--promptType dnd`: Dungeons & Dragons (HP, inventory, quest progress, DM/NPC dialogue).
  - `--promptType coc`: Call of Cthulhu (Sanity, Mythos knowledge, clues, phobias/manias).
  - `--promptType blades`: Blades in the Dark (Stress/Trauma, Heat, Coin, Scores, Entanglements).
+ - `--promptType mutant`: Mutant – Undergångens Arvtagare (Swedish post-apocalyptic RPG; kp/kritisk/dödlig skada, strålning/zonröta, mutationer & psi-mutationer/resonans, rykte, fynd/pålitlighet). Expects a Swedish-language transcript and writes the summary in Swedish. See `prompts/mutant/rules_reference.md` for the terminology this prompt set was built from.
 
 To add support for another system, add a `prompts/{yourSystem}/` folder (in your recordings folder, its parent, or alongside TASMAS itself) containing one or more `.txt` prompt files written the same way as the built-in ones.
 
