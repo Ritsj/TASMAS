@@ -3,7 +3,12 @@ import json
 import os
 import re
 import glob
-import readline
+try:
+    import readline
+except ImportError:
+    # not available on native Windows Python (needs pyreadline3); the only
+    # loss is input pre-fill during speaker-name entry, everything else works
+    readline = None
 from typing import Dict, Optional
 import torch
 import whisper_timestamped as whisper
@@ -81,11 +86,16 @@ def check_names(names: Optional[Dict[str, str]], files, extension):
         speaker_name = extract_speaker_name(file, extension)
         if speaker_name not in names:
             print()
-            readline.set_startup_hook(lambda: readline.insert_text(speaker_name))
+            if readline is not None:
+                readline.set_startup_hook(lambda: readline.insert_text(speaker_name))
+                prompt = f" Enter the proper speaker name for '{speaker_name}' (press enter to accept, or backspace it all and enter nothing to skip this file): "
+            else:
+                prompt = f" Enter the proper speaker name for '{speaker_name}' (or enter nothing to skip this file): "
             try:
-                value = input(f" Enter the proper speaker name for '{speaker_name}' (press enter to accept, or backspace it all and enter nothing to skip this file): ")
+                value = input(prompt)
             finally:
-                readline.set_startup_hook()  # remove hook again
+                if readline is not None:
+                    readline.set_startup_hook()  # remove hook again
             names[speaker_name] = value if value else None
     return names
 
