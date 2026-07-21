@@ -13,8 +13,12 @@ from utils import extract_speaker_name
 
 # --- corrections helpers ---
 def _flex_space(s: str) -> str:
-    # allow flexible whitespace inside multi-word phrases
-    return re.sub(r"\s+", r"\\s+", re.escape(s.strip()))
+    # allow flexible whitespace inside multi-word phrases. Escape each word
+    # individually before joining with \s+ -- escaping the whole phrase first
+    # and then substituting for \s+ doesn't work, because re.escape() also
+    # escapes the whitespace characters we're trying to replace, leaving a
+    # stray literal backslash in the pattern.
+    return r"\s+".join(re.escape(word) for word in s.strip().split())
 
 
 def _compile_boundary_corrections(corrections: Dict[str, str]):
