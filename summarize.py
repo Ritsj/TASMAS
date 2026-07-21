@@ -143,7 +143,11 @@ def summarize(input_dir, prompt_files, anthropic_api_key, use_subscription=False
         print()
         print("    Result:")
         print("    ---------")
-        terminal_width = os.get_terminal_size().columns
+        try:
+            terminal_width = os.get_terminal_size().columns
+        except OSError:
+            # no tty attached (e.g. running non-interactively) -- fall back to a sane default
+            terminal_width = 100
         # Split the summary into lines, then indent and wrap each line
         summary_lines = summary.split('\n')
         wrapped_summary = '\n'.join('\n'.join(textwrap.wrap(line, width=terminal_width, initial_indent='     ', subsequent_indent='     ')) for line in summary_lines)
