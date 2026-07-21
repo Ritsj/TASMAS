@@ -15,8 +15,8 @@ def get_configuration(args):
              .words.json files found at the path, 
              switching speakers at punctuation, to 
              produce a readable transcript.txt.
-- summarize: Calls OpenAI API to summarize the 
-             transcript.txt at the path using 
+- summarize: Calls the Claude API to summarize the
+             transcript.txt at the path using
              configurable prompts.
 - semiauto:  Runs recognize followed immediately by 
              assemble. (This is the recommended first 
@@ -100,7 +100,7 @@ audio stem).
     
     summarizeConfigGroup = parser.add_argument_group('summarize mode options')
     summarizeConfigGroup.add_argument('--promptType', type=str, help='''
-This script will call OpenAI's GPT-4 API to summarize
+This script will call the Claude API to summarize
 the transcript as many times as it is given prompts to
 do so. It will attempt to find text files in a
 "prompts/{promptType}/*.txt" folder (falling back to the
@@ -112,12 +112,10 @@ folder exists), in the following order:
 Built-in types include "generic" (system-agnostic) and
 "dnd", "coc", and "blades" (rules-aware for those systems).
 ''')
-    summarizeConfigGroup.add_argument('--openApiKey', type=str, help='''Due to current LLM token limits (Q1 2024) and the very 
-large number of tokens needed to summarize transcripts
-of much length, the summarize operation calls ChatGPT
-4 Turbo (128k tokens). As such, an OpenAI API key is 
-required to run in summarize (or fullauto) mode. 
-(It'll probably cost you about $0.10 USD per call.)
+    summarizeConfigGroup.add_argument('--anthropicApiKey', type=str, help='''The summarize operation calls the Claude API (model
+"claude-opus-4-8") to summarize the transcript. An
+Anthropic API key is required to run in summarize (or
+fullauto) mode.
 ''')
 
     config = vars(parser.parse_args(args))

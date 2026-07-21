@@ -3,7 +3,7 @@
 FROM whisper_timestamped 
 
 # install packages it doesn't include
-RUN pip install --no-cache-dir deepmultilingualpunctuation openai
+RUN pip install --no-cache-dir deepmultilingualpunctuation anthropic
 
 WORKDIR /usr/src/tasmas
 

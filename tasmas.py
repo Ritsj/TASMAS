@@ -192,7 +192,7 @@ def main(args):
         print()
         names = check_names(load_names(config.get('names'), inputDir), files, check_names_extension)
 
-    openai_api_key = config.get('openApiKey')
+    anthropic_api_key = config.get('anthropicApiKey')
     prompt_type = config.get('promptType')
     prompt_files = []
     if operation in ['summarize', 'fullauto']:
@@ -203,16 +203,16 @@ def main(args):
         if not prompt_files:
             print("  At least one prompt file must be found for summarize (or fullauto) operation mode.")
             sys.exit()
-        if (openai_api_key is None) or (openai_api_key == ''):
-            print("  OpenAI API key is required for summarize (or fullauto) operation mode.")
+        if (anthropic_api_key is None) or (anthropic_api_key == ''):
+            print("  Anthropic API key is required for summarize (or fullauto) operation mode.")
             sys.exit()
 
     operation_modes = {
         'recognize': lambda: recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')),
         'assemble': lambda: assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps),
-        'summarize': lambda: summarize(inputDir, prompt_files, openai_api_key),
+        'summarize': lambda: summarize(inputDir, prompt_files, anthropic_api_key),
         'semiauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps)],
-        'fullauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps), summarize(inputDir, prompt_files, openai_api_key)]
+        'fullauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps), summarize(inputDir, prompt_files, anthropic_api_key)]
     }
 
     print("--------------------")

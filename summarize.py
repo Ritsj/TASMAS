@@ -1,27 +1,33 @@
 import os
 import sys
-import glob 
 import textwrap
-from openai import OpenAI
+import anthropic
+
+MODEL = "claude-opus-4-8"
 
 def do_summary(transcript, client, prompt_file):
     with open(prompt_file, 'r') as file:
         prompt = file.read()
 
-    completion = client.chat.completions.create(model="gpt-4-turbo",
+    with client.messages.stream(
+        model=MODEL,
+        max_tokens=64000,
+        thinking={"type": "adaptive"},
+        system="You are a chatbot which can summarize long transcripts.",
         messages=[
-        {"role": "system", "content" : "You are a chatbot which can summarize long transcripts."},
-        {"role": "user", "content" : f'{prompt}{transcript}'},
-        ])
-    
-    return completion.choices[0].message.content
+            {"role": "user", "content": f'{prompt}{transcript}'},
+        ],
+    ) as stream:
+        message = stream.get_final_message()
 
-def summarize(input_dir, prompt_files, openai_api_key):
+    return next(block.text for block in message.content if block.type == "text")
+
+def summarize(input_dir, prompt_files, anthropic_api_key):
 
     if input_dir is None:
         print("Please provide an input directory.")
         return
-    
+
     print()
     print("--------------------")
     print("SUMMARIZE")
@@ -40,13 +46,13 @@ def summarize(input_dir, prompt_files, openai_api_key):
         print("  No prompts to use to summarize.")
         return
 
-    client = OpenAI(api_key=openai_api_key)
+    client = anthropic.Anthropic(api_key=anthropic_api_key)
 
     for prompt_file in prompt_files:
         # Call your command here
         print()
         print(f"  - Prompt {prompt_file}...")
-        
+
         summary = do_summary(transcript, client, prompt_file)
 
         filename = os.path.splitext(os.path.basename(prompt_file))[0].replace("prompt_", "")

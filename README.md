@@ -65,7 +65,7 @@ Manually adding a punctuation mark directly to an individual word in the corresp
 
 ## `SUMMARIZE`:
  
-*Given an Open AI api key, appropriate prompts, and a file path that contains a `transcript.txt`, ask GPT-4 Turbo to summarize the transcript.*
+*Given an Anthropic API key, appropriate prompts, and a file path that contains a `transcript.txt`, ask Claude to summarize the transcript.*
 
 ### Summary Prompts
 When executing the SUMMARIZE operation, `--promptType` is required, which will be used to attempt to locate text files in a `prompts/{promptType}/*.txt` folder, in the input path, its parent folder, or with TASMAS itself. (The older flat `prompt_{promptType}_*.txt` naming is still supported as a fallback if no `prompts/{promptType}/` folder is found, so any custom prompt files you already have keep working.)
@@ -78,12 +78,11 @@ TASMAS ships with prompt sets for a few systems, each tuned to what that system 
 
 To add support for another system, add a `prompts/{yourSystem}/` folder (in your recordings folder, its parent, or alongside TASMAS itself) containing one or more `.txt` prompt files written the same way as the built-in ones.
 
-Also, `--openApiKey` is required in this mode, because:
+Also, `--anthropicApiKey` is required in this mode, because:
 
 ### Why does summarize need to call a paid API?
-For each prompt file found, the OpenAI API is called. This is because of context token limits.  
-A typical D&D session transcript will likely be anywhere between 30,000 and 60,000 tokens. As of this writing, most models will consider only 4096 or 8192 tokens, and very few models can handle more than 32K tokens of input, with GPT-4 Turbo's 128K limit being the only one practically available to me.  
-So yes, it's not free, but it'll only cost you probably about $0.10 USD per prompt.  
+For each prompt file found, the Claude API is called (model `claude-opus-4-8`), which handles the full length of a typical D&D session transcript (usually 30,000-60,000 tokens) in a single call.  
+So yes, it's not free, but it's usage-based and typically inexpensive per prompt.  
 (And you don't ever have to use the SUMMARIZE workload at all if you don't want anyway. 😁)
 
 # Usage

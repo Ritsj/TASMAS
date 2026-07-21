@@ -9,7 +9,7 @@ setup(name='tasmas',
         'whisper_timestamped',
         'auditok',
         'deepmultilingualpunctuation',
-        'openai',
+        'anthropic',
         'silero-vad'
       ],
       entry_points={
