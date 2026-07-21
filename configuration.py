@@ -101,13 +101,16 @@ audio stem).
     summarizeConfigGroup = parser.add_argument_group('summarize mode options')
     summarizeConfigGroup.add_argument('--promptType', type=str, help='''
 This script will call OpenAI's GPT-4 API to summarize
-the transcript as many times as it is given prompts to 
-do so. It will attempt to find text files with the name
-pattern "prompt_{promptType}_*.txt", in the following 
-order: 
+the transcript as many times as it is given prompts to
+do so. It will attempt to find text files in a
+"prompts/{promptType}/*.txt" folder (falling back to the
+older flat "prompt_{promptType}_*.txt" naming if no such
+folder exists), in the following order:
  - in the `inputDir`
  - one level above the `inputDir`
  - in the location of this script
+Built-in types include "generic" (system-agnostic) and
+"dnd", "coc", and "blades" (rules-aware for those systems).
 ''')
     summarizeConfigGroup.add_argument('--openApiKey', type=str, help='''Due to current LLM token limits (Q1 2024) and the very 
 large number of tokens needed to summarize transcripts

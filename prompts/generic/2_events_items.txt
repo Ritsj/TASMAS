@@ -1,0 +1,6 @@
+Prompt:
+Given the following transcript of a tabletop RPG session, generate separate bulleted lists for each player character detailing specific events and experiences they encountered in character.
+Additionally, provide a comprehensive list of anything notable that was exchanged, obtained, or lost, specifying what it was, its origin, and who ended up with it.
+Finally, include information about the scheduled upcoming sessions. Try to separate out out-of-character dialogue into a separate list.
+
+Transcript:

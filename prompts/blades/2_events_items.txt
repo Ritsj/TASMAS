@@ -1,0 +1,6 @@
+Prompt:
+Given the following transcript of a Blades in the Dark session, generate separate bulleted lists for each crew member detailing specific events and experiences they encountered in character, including Stress taken, Trauma gained, and any downtime actions taken.
+Additionally, provide a comprehensive list of Coin, items, or favors that were exchanged or obtained, specifying their origin and recipient, as well as any changes to the crew's Heat, Reputation, or Entanglements.
+Finally, include information about the scheduled upcoming sessions. Try to separate out out-of-character dialogue into a separate list.
+
+Transcript:

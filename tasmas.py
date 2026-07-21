@@ -94,7 +94,11 @@ def load_prompt_files(input_dir, prompt_type):
     directories = [input_dir, os.path.dirname(input_dir), os.path.dirname(os.path.realpath(__file__))]
 
     for directory in directories:
-        files = glob.glob(os.path.join(directory, f'prompt_{prompt_type}_*.txt'))
+        # preferred layout: prompts/<promptType>/*.txt (e.g. prompts/dnd, prompts/coc, prompts/generic)
+        files = sorted(glob.glob(os.path.join(directory, 'prompts', prompt_type, '*.txt')))
+        if not files:
+            # legacy flat naming convention: prompt_<promptType>_*.txt
+            files = sorted(glob.glob(os.path.join(directory, f'prompt_{prompt_type}_*.txt')))
         if files:
             print()
             print(f"  Found the following prompt files in {directory}:")

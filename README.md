@@ -68,9 +68,15 @@ Manually adding a punctuation mark directly to an individual word in the corresp
 *Given an Open AI api key, appropriate prompts, and a file path that contains a `transcript.txt`, ask GPT-4 Turbo to summarize the transcript.*
 
 ### Summary Prompts
-When executing the SUMMARIZE operation, `--promptType` is required, which will be used to attempt to locate text files named in the format `prompt_{promptType}_*.txt`, in the input path, its parent folder, or with TASMAS itself. 
+When executing the SUMMARIZE operation, `--promptType` is required, which will be used to attempt to locate text files in a `prompts/{promptType}/*.txt` folder, in the input path, its parent folder, or with TASMAS itself. (The older flat `prompt_{promptType}_*.txt` naming is still supported as a fallback if no `prompts/{promptType}/` folder is found, so any custom prompt files you already have keep working.)
 
-TASMAS was designed for summarizing Dungeons & Dragons sessions, and as examples, comes with two prompts that produce useful output, `prompt_dnd_1.txt` and `prompt_dnd_2.txt`, which will be used if `--promptType dnd` is specified.
+TASMAS ships with prompt sets for a few systems, each tuned to what that system actually tracks:
+ - `--promptType generic`: system-agnostic, works for any tabletop RPG.
+ - `--promptType dnd`: Dungeons & Dragons (HP, inventory, quest progress, DM/NPC dialogue).
+ - `--promptType coc`: Call of Cthulhu (Sanity, Mythos knowledge, clues, phobias/manias).
+ - `--promptType blades`: Blades in the Dark (Stress/Trauma, Heat, Coin, Scores, Entanglements).
+
+To add support for another system, add a `prompts/{yourSystem}/` folder (in your recordings folder, its parent, or alongside TASMAS itself) containing one or more `.txt` prompt files written the same way as the built-in ones.
 
 Also, `--openApiKey` is required in this mode, because:
 
