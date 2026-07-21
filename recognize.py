@@ -1,12 +1,12 @@
 import os
 import json
 import glob
-from typing import Dict
+from typing import Dict, Optional
 import whisper_timestamped as whisper
 
 from utils import extract_speaker_name
 
-def recognize(input_dir: str, names: Dict[str, str], fast: bool = False, slow: bool = False, model_type: str = "small", device: str = "cuda", audio_ext: str = "ogg"):
+def recognize(input_dir: str, names: Dict[str, str], fast: bool = False, slow: bool = False, model_type: Optional[str] = None, device: str = "cuda", audio_ext: str = "ogg"):
     model_type = "tiny" if fast else (model_type if model_type else ("medium" if slow else "small"))
     model = whisper.load_model(model_type, device=device)
 

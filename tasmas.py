@@ -189,11 +189,11 @@ def main(args):
             sys.exit()
 
     operation_modes = {
-        'recognize': lambda: recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType', 'small')),
+        'recognize': lambda: recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')),
         'assemble': lambda: assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps),
         'summarize': lambda: summarize(inputDir, prompt_files, openai_api_key),
-        'semiauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType', 'small')), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps)],
-        'fullauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType', 'small')), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps), summarize(inputDir, prompt_files, openai_api_key)]
+        'semiauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps)],
+        'fullauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps), summarize(inputDir, prompt_files, openai_api_key)]
     }
 
     print("--------------------")
