@@ -15,8 +15,8 @@ def get_configuration(args):
              .words.json files found at the path, 
              switching speakers at punctuation, to 
              produce a readable transcript.txt.
-- summarize: Calls OpenAI API to summarize the 
-             transcript.txt at the path using 
+- summarize: Calls the Claude API to summarize the
+             transcript.txt at the path using
              configurable prompts.
 - semiauto:  Runs recognize followed immediately by 
              assemble. (This is the recommended first 
@@ -33,6 +33,20 @@ Defaults to "ogg", for use with Craig recordings, but
 I would think that things like "wav" or "flac" would 
 work too.
 ''')
+    recognizeConfigGroup.add_argument('--modelType', type=str, default=None, help='''Model to use for transcription. Can be a standard Whisper model
+size (tiny, base, small, medium, large) or a custom model path
+from HuggingFace (e.g., "voxreality/whisper-small-el-finetune").
+Defaults to "small" (or "medium" if --slow is given).
+''')
+    recognizeConfigGroup.add_argument('--slow', action='store_true', 
+                                      help='''Prioritize recognition accuracy over speed.
+Results in the following changes:
+- Uses the "medium" model instead of the "small" model 
+- Uses "accurate" params rather than "efficient" ones
+- Uses the Silero VAD instead of the Auditok VAD
+Use this for languages that are not English and are having issues with the default small model.
+'''
+)
     recognizeConfigGroup.add_argument('--fast', action='store_true', 
                                       help='''Prioritize recognition speed over accuracy.
 Results in the following changes:
@@ -86,21 +100,58 @@ audio stem).
     
     summarizeConfigGroup = parser.add_argument_group('summarize mode options')
     summarizeConfigGroup.add_argument('--promptType', type=str, help='''
-This script will call OpenAI's GPT-4 API to summarize
-the transcript as many times as it is given prompts to 
-do so. It will attempt to find text files with the name
-pattern "prompt_{promptType}_*.txt", in the following 
-order: 
+This script will call the Claude API to summarize
+the transcript as many times as it is given prompts to
+do so. It will attempt to find text files in a
+"prompts/{promptType}/*.txt" folder (falling back to the
+older flat "prompt_{promptType}_*.txt" naming if no such
+folder exists), in the following order:
  - in the `inputDir`
  - one level above the `inputDir`
  - in the location of this script
+Built-in types include "generic" (system-agnostic) and
+"dnd", "coc", and "blades" (rules-aware for those systems).
 ''')
-    summarizeConfigGroup.add_argument('--openApiKey', type=str, help='''Due to current LLM token limits (Q1 2024) and the very 
-large number of tokens needed to summarize transcripts
-of much length, the summarize operation calls ChatGPT
-4 Turbo (128k tokens). As such, an OpenAI API key is 
-required to run in summarize (or fullauto) mode. 
-(It'll probably cost you about $0.10 USD per call.)
+    summarizeConfigGroup.add_argument('--anthropicApiKey', type=str, help='''The summarize operation calls the Claude API (model
+"claude-opus-4-8") to summarize the transcript. An
+Anthropic API key is required to run in summarize (or
+fullauto) mode, unless --useSubscription is given instead.
+''')
+    summarizeConfigGroup.add_argument('--useSubscription', action='store_true', help='''Use your Claude subscription (Pro/Max/Team) via the Claude
+Agent SDK instead of the pay-per-token Anthropic API, so
+usage draws from your subscription instead of a metered bill.
+Requires the `claude-agent-sdk` package (pip install
+claude-agent-sdk) plus the Claude Code CLI logged in --
+run `claude setup-token` once, or just be logged in via
+`claude login`. Makes --anthropicApiKey unnecessary. Subject
+to your subscription's usage limits rather than metered cost.
+''')
+    summarizeConfigGroup.add_argument('--useLocal', action='store_true', help='''Use a locally-running Ollama model instead of the Claude API
+or your subscription, at no per-call cost. Requires the
+`ollama` package (pip install ollama) and a local Ollama
+server (`ollama serve`) with the model already pulled (e.g.
+`ollama pull phi4-mini`). Makes --anthropicApiKey unnecessary.
+Mutually exclusive with --useSubscription.
+''')
+    summarizeConfigGroup.add_argument('--localModel', type=str, default='phi4-mini', help='''Which Ollama model to use with --useLocal. Defaults to
+"phi4-mini". Must already be pulled (`ollama pull <model>`)
+and support a large enough context window for your transcript
+length (see --localContextTokens).
+''')
+    summarizeConfigGroup.add_argument('--localHost', type=str, help='''Ollama server URL to use with --useLocal. Defaults to
+Ollama's own default resolution (usually
+http://127.0.0.1:11434, or the OLLAMA_HOST environment
+variable).
+''')
+    summarizeConfigGroup.add_argument('--localContextTokens', type=int, default=32768, help='''Context window size (num_ctx) to request from Ollama with
+--useLocal. Ollama defaults to a small context window
+(commonly just 4096 tokens, run `ollama serve` to check yours)
+regardless of what the model supports, and silently truncates
+input that doesn't fit rather than erroring -- this needs to
+be large enough for your prompt plus transcript (D&D sessions
+typically run 30,000-60,000 tokens). A larger value uses
+proportionally more RAM for the context cache, so raise it
+carefully on memory-constrained or CPU-only machines.
 ''')
 
     config = vars(parser.parse_args(args))

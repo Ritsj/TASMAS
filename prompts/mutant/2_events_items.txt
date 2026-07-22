@@ -1,0 +1,14 @@
+Prompt:
+Given the following transcript of a "Mutant: Undergångens Arvtagare" session (Swedish post-apocalyptic tabletop RPG), generate separate bulleted lists in Swedish, one per rollperson (player character), detailing specific in-character events and experiences: kp-skada taken, any kritisk skada or dödlig skada (and to which kroppsdel), mutationer/psi-mutationer/optioner/talanger used and their outcome, resonans effects from failed psi activations, strålning/zonröta exposure, and notable rollspelande moments.
+
+Additionally, provide a comprehensive list of all fynd (finds), teknologi, artifacts, and other items that were discovered, traded, repaired, or lost, specifying their name, origin, current holder, and pålitlighet (pål) if it changed. Include a list of rykte changes (who gained or lost rykte, and why) and krediter earned or spent. Finally, include information about scheduled upcoming sessions or open plot threads. Try to separate out-of-character (ooc) dialogue into its own list rather than mixing it into the in-character events.
+
+Reference terminology (for correctly interpreting the transcript — not to be explained back to the reader):
+- Klasser: imm (icke-muterad människa), mm/md (mutant), psi/mmd (psi-mutant), rbt (robot).
+- kp = kroppspoäng, tt = traumatröskel, fv = färdighetsvärde, sr = stridsrunda, erf = erfarenhetspoäng.
+- Skada: kp-skada (mindre) → kritisk skada (allvarlig) → dödlig skada (livshotande).
+- Strålning/zonröta/zonsmitta: strålsjuka, sänker fys om obehandlad.
+- Rykte: kändisskap/anseende. Pålitlighet (pål): tillförlitlighet hos högteknologiska fynd, kan haverera.
+- Setting: Pyrisamfundet, Hindenburg, Pirit, Nordholmia, zoner, fribyggare/nybyggare.
+
+Transcript:

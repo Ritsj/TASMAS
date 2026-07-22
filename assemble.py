@@ -11,6 +11,35 @@ from deepmultilingualpunctuation import PunctuationModel
 from tqdm import tqdm
 from utils import extract_speaker_name
 
+# --- corrections helpers ---
+def _flex_space(s: str) -> str:
+    # allow flexible whitespace inside multi-word phrases. Escape each word
+    # individually before joining with \s+ -- escaping the whole phrase first
+    # and then substituting for \s+ doesn't work, because re.escape() also
+    # escapes the whitespace characters we're trying to replace, leaving a
+    # stray literal backslash in the pattern.
+    return r"\s+".join(re.escape(word) for word in s.strip().split())
+
+
+def _compile_boundary_corrections(corrections: Dict[str, str]):
+    """
+    corrections: wrong -> right
+    returns: [(compiled_pattern, right), ...] sorted longest-first
+    """
+    compiled = []
+    for wrong, right in corrections.items():
+        patt = rf"(?i)(?<!\w){_flex_space(wrong)}(?!\w)"  # Unicode-safe token boundaries
+        compiled.append((re.compile(patt), right, len(wrong)))
+    compiled.sort(key=lambda t: t[2], reverse=True)  # longest wrong first
+    return [(p, r) for (p, r, _) in compiled]
+
+
+def _apply_corrections_text_only(text: str, compiled_patterns):
+    for patt, repl in compiled_patterns:
+        text = patt.sub(repl, text)
+    return text
+# --- end corrections helpers ---
+
 class WtWordEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, (WtWord, WtWordList)):
@@ -269,14 +298,17 @@ def update_word_texts(word_list: WtWordList, new_text: str, original_words: List
 def output_items(input_dir, corrections, show_timestamps, format_string, max_speaker_width, collapsed_items):
     output_builder = []
 
+    compiled = _compile_boundary_corrections(corrections) if corrections else []
+
     for item in collapsed_items:
         timestamp = f"[{item.start}-{item.end}] " if show_timestamps else ""
-        out_string = f"{timestamp}{item.speaker.rjust(max_speaker_width)}: \"{item.text}\""
 
-        if corrections is not None:
-            for key, value in corrections.items():
-                out_string = out_string.replace(key, value)
+        # corrections applied ONLY to the utterance text, not the label
+        text = item.text
+        if compiled:
+            text = _apply_corrections_text_only(text, compiled)
 
+        out_string = f"{timestamp}{item.speaker.rjust(max_speaker_width)}: \"{text}\""
         output_builder.append(out_string)
 
     output_path = os.path.join(input_dir, "transcript.txt")
@@ -331,4 +363,5 @@ def insert_ellipses_at_likely_breaks(segment_chunks: List[WtWord], no_asterisks:
             if current_word.speaker != prvs_word.speaker:
                 raise ValueError("Only meant to be used on single-speaker collection")
             if current_word.start - prvs_word.end > 10 and not ends_with_break(prvs_word.text):
+
                 prvs_word.text = prvs_word.text.strip() + ("" if no_asterisks else "*") + "..."

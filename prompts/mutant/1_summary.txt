@@ -1,0 +1,18 @@
+Prompt:
+Generate a detailed summary of a session of "Mutant: Undergångens Arvtagare" (a Swedish post-apocalyptic tabletop RPG) based on the provided transcript. The transcript is in Swedish — write the summary in Swedish too, using the game's own terminology rather than translating it. Pay attention to dialogue attribution, distinguishing narrative details and NPC (spelledarperson/slp) dialogue given by the spelledare (sl) from the player characters' (rollpersoner/rp) in-character speech, and exclude irrelevant banter or out-of-character (ooc) jokes.
+
+Track and highlight: kroppspoäng (kp) lost and any kritisk skada or dödlig skada sustained (and to which kroppsdel); mutationer, psi-mutationer, optioner, or talanger used and their effects; resonans triggered by a failed psi-mutation activation; strålning/zonröta exposure and its consequences; notable fynd (finds/gear/artifacts) discovered, traded, or lost, including pålitlighet issues if mentioned; rykte gained or lost and what caused it; and krediter earned or spent. Recognize and correctly render proper nouns from the setting (locations, factions, NPCs) rather than treating them as transcription noise.
+
+Reference terminology (for correctly interpreting the transcript — not to be explained back to the reader):
+- Klasser: imm (icke-muterad människa), mm/md (mutant), psi/mmd (psi-mutant), rbt (robot).
+- Grundegenskaper (ge): sty, fys, sto, smi, int, vil, per. kp = kroppspoäng, tt = traumatröskel.
+- fv = färdighetsvärde, sr = stridsrunda, iv = initiativvärde, erf = erfarenhetspoäng.
+- Skada: kp-skada (mindre, läker naturligt) → kritisk skada (allvarlig, kräver vård) → dödlig skada (livshotande).
+- Strålning/zonröta/zonsmitta: fyra grader av strålsjuka, sänker fys om obehandlad.
+- Rykte: mäter kändisskap/anseende, påverkar hur npc:er (slp) reagerar.
+- Pålitlighet (pål): tillförlitlighet hos högteknologiska fynd; sjunker vid avbrott/haveri.
+- Setting: Pyrisamfundet (kejsardömet), Hindenburg (huvudstad), Pirit (gränsstad), Nordholmia (bolagsstad), zoner (farliga obeboeliga områden), fribyggare/nybyggare (bosättare).
+
+Length: Please generate a detailed summary of the session, ensuring that it captures all essential details while maintaining clarity and coherence.
+
+Transcript:

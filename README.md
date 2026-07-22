@@ -65,20 +65,55 @@ Manually adding a punctuation mark directly to an individual word in the corresp
 
 ## `SUMMARIZE`:
  
-*Given an Open AI api key, appropriate prompts, and a file path that contains a `transcript.txt`, ask GPT-4 Turbo to summarize the transcript.*
+*Given an Anthropic API key, appropriate prompts, and a file path that contains a `transcript.txt`, ask Claude to summarize the transcript.*
 
 ### Summary Prompts
-When executing the SUMMARIZE operation, `--promptType` is required, which will be used to attempt to locate text files named in the format `prompt_{promptType}_*.txt`, in the input path, its parent folder, or with TASMAS itself. 
+When executing the SUMMARIZE operation, `--promptType` is required, which will be used to attempt to locate text files in a `prompts/{promptType}/*.txt` folder, in the input path, its parent folder, or with TASMAS itself. (The older flat `prompt_{promptType}_*.txt` naming is still supported as a fallback if no `prompts/{promptType}/` folder is found, so any custom prompt files you already have keep working.)
 
-TASMAS was designed for summarizing Dungeons & Dragons sessions, and as examples, comes with two prompts that produce useful output, `prompt_dnd_1.txt` and `prompt_dnd_2.txt`, which will be used if `--promptType dnd` is specified.
+TASMAS ships with prompt sets for a few systems, each tuned to what that system actually tracks:
+ - `--promptType generic`: system-agnostic, works for any tabletop RPG.
+ - `--promptType dnd`: Dungeons & Dragons (HP, inventory, quest progress, DM/NPC dialogue).
+ - `--promptType coc`: Call of Cthulhu (Sanity, Mythos knowledge, clues, phobias/manias).
+ - `--promptType blades`: Blades in the Dark (Stress/Trauma, Heat, Coin, Scores, Entanglements).
+ - `--promptType mutant`: Mutant – Undergångens Arvtagare (Swedish post-apocalyptic RPG; kp/kritisk/dödlig skada, strålning/zonröta, mutationer & psi-mutationer/resonans, rykte, fynd/pålitlighet). Expects a Swedish-language transcript and writes the summary in Swedish. See `prompts/mutant/rules_reference.md` for the terminology this prompt set was built from.
 
-Also, `--openApiKey` is required in this mode, because:
+To add support for another system, add a `prompts/{yourSystem}/` folder (in your recordings folder, its parent, or alongside TASMAS itself) containing one or more `.txt` prompt files written the same way as the built-in ones.
+
+Also, `--anthropicApiKey` is required in this mode, because:
 
 ### Why does summarize need to call a paid API?
-For each prompt file found, the OpenAI API is called. This is because of context token limits.  
-A typical D&D session transcript will likely be anywhere between 30,000 and 60,000 tokens. As of this writing, most models will consider only 4096 or 8192 tokens, and very few models can handle more than 32K tokens of input, with GPT-4 Turbo's 128K limit being the only one practically available to me.  
-So yes, it's not free, but it'll only cost you probably about $0.10 USD per prompt.  
+For each prompt file found, the Claude API is called (model `claude-opus-4-8`), which handles the full length of a typical D&D session transcript (usually 30,000-60,000 tokens) in a single call.  
+So yes, it's not free, but it's usage-based and typically inexpensive per prompt.  
 (And you don't ever have to use the SUMMARIZE workload at all if you don't want anyway. 😁)
+
+### Using your Claude subscription instead of an API key
+If you already pay for Claude Pro, Max, or Team, you can use that instead of paying per-token: pass `--useSubscription` in place of `--anthropicApiKey`. This routes the summarize call through the Claude Agent SDK, authenticated the same way Claude Code is (subscription usage, not metered API billing) — subject to your subscription's usage limits rather than a per-token cost.
+
+Requires:
+1. `pip install claude-agent-sdk`
+2. The Claude Code CLI installed and logged in — run `claude setup-token` once (or just be logged in via `claude login`).
+
+```bash
+tasmas summarize /mnt/c/recordings/2024-04-04 --promptType dnd --useSubscription
+```
+
+### Using a local model instead (no cloud, no cost)
+Pass `--useLocal` to summarize with a locally-running [Ollama](https://ollama.com) model instead of the Claude API or your subscription — nothing leaves your machine, and there's no per-call cost.
+
+Requires:
+1. `pip install ollama`
+2. A local Ollama server running (`ollama serve`) with the model already pulled (e.g. `ollama pull phi4-mini`)
+
+```bash
+tasmas summarize /mnt/c/recordings/2024-04-04 --promptType dnd --useLocal
+```
+
+By default this uses the `phi4-mini` model (128K context window, ~2.5GB, small enough to run on CPU). Ollama itself defaults to a much smaller context window regardless of what the model supports (often just 4096 tokens — check what yours reports on startup), and **silently truncates** input that doesn't fit rather than erroring, so TASMAS explicitly requests a larger one via `--localContextTokens` (default `32768`). D&D session transcripts typically run 30,000-60,000 tokens, so:
+ - Raise `--localContextTokens` if you have the RAM for it (context cache size scales with this value — on a CPU-only or memory-constrained machine, this is the main thing that can go wrong; TASMAS will print a warning if your transcript looks like it's close to or over the configured window).
+ - Use `--localModel` to pick a different Ollama model, provided it's already pulled and supports enough context for your transcript.
+ - Use `--localHost` if your Ollama server isn't at the default `http://127.0.0.1:11434`.
+
+Expect this to be noticeably slower than the API or subscription paths, especially on CPU-only hardware — there's no timeout, but a 30-60K token summarization pass can take a while.
 
 # Usage
 
@@ -198,3 +233,32 @@ I haven't put this on PyPI yet (and probably need to reorganize it a bit in orde
 What you can do, though, is clone or download the contents of this repo, cd to it and then say `pip install . `.  That should allow you to use the `tasmas` command.  
 
 You can also just say `python tasmas.py` instead though, if you feel like it.
+
+#### Python Requirements and Setup
+TASMAS requires **Python 3.11** and several dependencies. Here's how to set it up:
+
+1. **Ensure Python 3.11 is installed** on your system
+2. **Create a virtual environment** (recommended):
+   ```bash
+   python3.11 -m venv venv
+   source venv/bin/activate  # On Linux/Mac
+   # or
+   venv\Scripts\activate     # On Windows
+   ```
+3. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. **Install TASMAS**:
+   ```bash
+   pip install .
+   ```
+5. **Run TASMAS**:
+   ```bash
+   tasmas semiauto /path/to/your/recordings
+   ```
+
+**Note**: If you prefer not to install TASMAS as a package, you can run it directly with:
+```bash
+python tasmas.py semiauto /path/to/your/recordings
+```

@@ -3,7 +3,12 @@ import json
 import os
 import re
 import glob
-import readline
+try:
+    import readline
+except ImportError:
+    # not available on native Windows Python (needs pyreadline3); the only
+    # loss is input pre-fill during speaker-name entry, everything else works
+    readline = None
 from typing import Dict, Optional
 import torch
 import whisper_timestamped as whisper
@@ -81,11 +86,16 @@ def check_names(names: Optional[Dict[str, str]], files, extension):
         speaker_name = extract_speaker_name(file, extension)
         if speaker_name not in names:
             print()
-            readline.set_startup_hook(lambda: readline.insert_text(speaker_name))
+            if readline is not None:
+                readline.set_startup_hook(lambda: readline.insert_text(speaker_name))
+                prompt = f" Enter the proper speaker name for '{speaker_name}' (press enter to accept, or backspace it all and enter nothing to skip this file): "
+            else:
+                prompt = f" Enter the proper speaker name for '{speaker_name}' (or enter nothing to skip this file): "
             try:
-                value = input(f" Enter the proper speaker name for '{speaker_name}' (press enter to accept, or backspace it all and enter nothing to skip this file): ")
+                value = input(prompt)
             finally:
-                readline.set_startup_hook()  # remove hook again
+                if readline is not None:
+                    readline.set_startup_hook()  # remove hook again
             names[speaker_name] = value if value else None
     return names
 
@@ -94,7 +104,11 @@ def load_prompt_files(input_dir, prompt_type):
     directories = [input_dir, os.path.dirname(input_dir), os.path.dirname(os.path.realpath(__file__))]
 
     for directory in directories:
-        files = glob.glob(os.path.join(directory, f'prompt_{prompt_type}_*.txt'))
+        # preferred layout: prompts/<promptType>/*.txt (e.g. prompts/dnd, prompts/coc, prompts/generic)
+        files = sorted(glob.glob(os.path.join(directory, 'prompts', prompt_type, '*.txt')))
+        if not files:
+            # legacy flat naming convention: prompt_<promptType>_*.txt
+            files = sorted(glob.glob(os.path.join(directory, f'prompt_{prompt_type}_*.txt')))
         if files:
             print()
             print(f"  Found the following prompt files in {directory}:")
@@ -129,11 +143,11 @@ def check_cuda():
     else:
         print("  CUDA is available.")
 
-def main():
+def main(args):
     # sys.argv contains the command-line arguments
     # sys.argv[0] is the script name
     # sys.argv[1:] are the arguments passed to the script
-    args = sys.argv[1:]
+    # args = sys.argv[1:]
     config = get_configuration(args)
     inputDir = config['inputDir']
     no_ellipses = config.get('noEllipses', False)
@@ -151,31 +165,45 @@ def main():
     corrections = load_corrections(config.get('corrections'), inputDir)
 
     operation = config['operationMode']
-    if operation in ['recognize', 'semiauto', 'fullauto']:
-        check_names_extension = config.get('extension', 'ogg').strip() or 'ogg'
-    else:
-        check_names_extension = 'words.json'
+    names = None
+    if operation != 'summarize':
+        # 'summarize' alone only needs transcript.txt (checked in summarize()); it
+        # doesn't touch per-speaker audio/words.json files, so skip this discovery
+        # and avoid forcing those files to still exist for a summarize-only run.
+        if operation in ['recognize', 'semiauto', 'fullauto']:
+            extension = config.get('extension')
+            check_names_extension = extension.strip() if extension else 'ogg'
+        else:
+            check_names_extension = 'words.json'
 
-    files = glob.glob(os.path.join(inputDir, f"*.{check_names_extension}"))
+        files = glob.glob(os.path.join(inputDir, f"*.{check_names_extension}"))
 
-    if not files:
+        if not files:
+            print()
+            print(f" No {check_names_extension} files were found at {inputDir}.")
+            print()
+            sys.exit()
+
+        print(f" Found {len(files)} files to work on at {inputDir}:")
         print()
-        print(f" No {check_names_extension} files were found at {inputDir}.")
+        for file in files:
+            filename = os.path.basename(file)
+            print(f'  - {filename}')
         print()
-        sys.exit()
+        names = check_names(load_names(config.get('names'), inputDir), files, check_names_extension)
 
-    print(f" Found {len(files)} files to work on at {inputDir}:")
-    print()
-    for file in files:
-        filename = os.path.basename(file)
-        print(f'  - {filename}')
-    print()
-    names = check_names(load_names(config.get('names'), inputDir), files, check_names_extension)
-
-    openai_api_key = config.get('openApiKey')
+    anthropic_api_key = config.get('anthropicApiKey')
+    use_subscription = config.get('useSubscription', False)
+    use_local = config.get('useLocal', False)
+    local_model = config.get('localModel', 'phi4-mini')
+    local_host = config.get('localHost')
+    local_context_tokens = config.get('localContextTokens', 32768)
     prompt_type = config.get('promptType')
     prompt_files = []
     if operation in ['summarize', 'fullauto']:
+        if use_local and use_subscription:
+            print("  --useLocal and --useSubscription are mutually exclusive -- pick one summarize backend.")
+            sys.exit()
         if (prompt_type is None) or (prompt_type == ''):
             print("  Prompt Type is required for summarize (or fullauto) operation mode.")
             sys.exit()
@@ -183,16 +211,16 @@ def main():
         if not prompt_files:
             print("  At least one prompt file must be found for summarize (or fullauto) operation mode.")
             sys.exit()
-        if (openai_api_key is None) or (openai_api_key == ''):
-            print("  OpenAI API key is required for summarize (or fullauto) operation mode.")
+        if not use_local and not use_subscription and ((anthropic_api_key is None) or (anthropic_api_key == '')):
+            print("  Anthropic API key is required for summarize (or fullauto) operation mode (or pass --useSubscription / --useLocal to use an alternative backend).")
             sys.exit()
 
     operation_modes = {
-        'recognize': lambda: recognize(inputDir, names, config['fast']),
+        'recognize': lambda: recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')),
         'assemble': lambda: assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps),
-        'summarize': lambda: summarize(inputDir, prompt_files, openai_api_key),
-        'semiauto': lambda: [recognize(inputDir, names, config['fast']), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps)],
-        'fullauto': lambda: [recognize(inputDir, names, config['fast']), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps), summarize(inputDir, prompt_files, openai_api_key)]
+        'summarize': lambda: summarize(inputDir, prompt_files, anthropic_api_key, use_subscription, use_local, local_model, local_host, local_context_tokens),
+        'semiauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps)],
+        'fullauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps), summarize(inputDir, prompt_files, anthropic_api_key, use_subscription, use_local, local_model, local_host, local_context_tokens)]
     }
 
     print("--------------------")

@@ -1,0 +1,6 @@
+Prompt:
+Given the following transcript of a Call of Cthulhu session, generate separate bulleted lists for each investigator detailing specific events and experiences they encountered in character, including any Sanity checks made, San lost or recovered, and injuries sustained.
+Additionally, provide a comprehensive list of all clues, documents, Mythos tomes, and items that were discovered, exchanged, or obtained, specifying their name, origin, and current holder.
+Finally, include information about the scheduled upcoming sessions. Try to separate out out-of-character dialogue into a separate list.
+
+Transcript:
