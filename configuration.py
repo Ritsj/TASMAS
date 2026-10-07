@@ -5,25 +5,31 @@ def get_configuration(args):
     parser = argparse.ArgumentParser(formatter_class=argparse.RawTextHelpFormatter,
                                      description='''Multi-Stem Conversational Transcriber
 ''')
-    parser.add_argument('operationMode', type=str, 
-                        choices=['recognize', 'assemble', 'summarize', 'semiauto', 'fullauto'], 
+    parser.add_argument('operationMode', type=str,
+                        choices=['recognize', 'assemble', 'summarize', 'semiauto', 'fullauto', 'storify'],
                         help='''Which step to perform:
-- recognize: Transcribes all audio files found at the 
-             path using whisper_timestamped and writes 
+- recognize: Transcribes all audio files found at the
+             path using whisper_timestamped and writes
              a .words.json file for each.
-- assemble:  Arranges by timecode the contents of all 
-             .words.json files found at the path, 
-             switching speakers at punctuation, to 
+- assemble:  Arranges by timecode the contents of all
+             .words.json files found at the path,
+             switching speakers at punctuation, to
              produce a readable transcript.txt.
 - summarize: Calls the Claude API to summarize the
              transcript.txt at the path using
              configurable prompts.
-- semiauto:  Runs recognize followed immediately by 
-             assemble. (This is the recommended first 
+- semiauto:  Runs recognize followed immediately by
+             assemble. (This is the recommended first
              pass mode, as it is common to iterate on
              assemble multiple times making manual
              tweaks to the .words.json files.)
-- fullauto:  Performs all steps in succession. 
+- fullauto:  Performs all steps in succession.
+- storify:   Weaves the per-session transcript.txt files
+             in the subfolders of the given campaign path
+             into one continuous, novel-style story
+             (story.md), carrying a rolling "story so far"
+             forward for continuity. Runs incrementally --
+             re-running only processes newly-added sessions.
  ''')
     parser.add_argument('inputDir', type=str, help='The path to the files to process.')
 
@@ -154,6 +160,16 @@ proportionally more RAM for the context cache, so raise it
 carefully on memory-constrained or CPU-only machines.
 ''')
 
+    storifyConfigGroup = parser.add_argument_group('storify mode options')
+    storifyConfigGroup.add_argument('--rebuild', action='store_true', help='''Regenerate the whole continuous story from scratch
+rather than incrementally. By default storify only
+processes session subfolders not already recorded in
+story.state.json; --rebuild ignores that record and
+rewrites story.md from all sessions. storify shares the
+summarize backend options above (--anthropicApiKey /
+--useSubscription / --useLocal and the --local* options).
+''')
+
     config = vars(parser.parse_args(args))
-    
+
     return config

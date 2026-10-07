@@ -3,3 +3,8 @@ auditok==0.2.0
 deepmultilingualpunctuation==1.0.1
 anthropic
 silero-vad
+torch
+
+# Optional summarize backends (install only if you use the matching flag):
+#   claude-agent-sdk   # --useSubscription (also needs the Claude Code CLI logged in)
+#   ollama             # --useLocal (also needs a local `ollama serve`)

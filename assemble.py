@@ -2,13 +2,11 @@ import json
 import os
 import glob
 import re
-import math
 import uuid
 import warnings
 from operator import attrgetter
 from typing import List, Dict, Optional
 from deepmultilingualpunctuation import PunctuationModel
-from tqdm import tqdm
 from utils import extract_speaker_name
 
 # --- corrections helpers ---
@@ -123,24 +121,13 @@ def assemble(input_dir, corrections, names, no_ellipses, disfluent_comma, no_ast
     sorted_chunks = sorted(all_chunks, key=attrgetter('start', 'speaker', 'end'))
     print(" Normalizing...")
     normalized_items = normalize_items(sorted_chunks)
-    """normaljson = os.path.join(input_dir, 'normalized.json')
-    with open(normaljson, 'w') as f:
-        f.write(json.dumps(normalized_items, cls=WtWordEncoder, indent=2))"""
     print(" Collapsing...")
     collapsed_items = collapse_adjacent(normalized_items)
-    """collapsejson = os.path.join(input_dir, 'collapsed.json')
-    with open(collapsejson, 'w') as f:
-        f.write(json.dumps(collapsed_items, cls=WtWordEncoder, indent=2))"""
-    print(" Formatting...")
-    # max timestamp value for formatting 
-    max_timestamp =  max(value for chunk in sorted_chunks for value in [chunk.start, chunk.end])
-    timestamp_digits = int(math.ceil(math.log10(max_timestamp)))
-    format_string = "{:0{}.2f}".format(max_timestamp, timestamp_digits)
 
     # Find the maximum width of the speaker name
     max_speaker_width = max(len(chunk.speaker) for chunk in sorted_chunks)
     print(" Checking for problems...")
-    out_of_sync_items = get_out_of_sync_items(input_dir, format_string, max_speaker_width, collapsed_items)  
+    out_of_sync_items = get_out_of_sync_items(input_dir, max_speaker_width, collapsed_items)
     if len(out_of_sync_items) > 0:
         #run them through the punctuation model and collapse again
         print(f"  Found {len(out_of_sync_items)} out-of-sync items. Attempting to auto-punctuate and re-collapse...")
@@ -163,18 +150,12 @@ def assemble(input_dir, corrections, names, no_ellipses, disfluent_comma, no_ast
                 print("  Re-collapsing...")
                 collapsed_items = collapse_adjacent(normalized_items)
                 print("  Checking for problems again...")
-                out_of_sync_items = get_out_of_sync_items(input_dir, format_string, max_speaker_width, collapsed_items)  
-                if len(out_of_sync_items) > 0:     
+                out_of_sync_items = get_out_of_sync_items(input_dir, max_speaker_width, collapsed_items)
+                if len(out_of_sync_items) > 0:
                     write_out_of_sync_items(input_dir, max_speaker_width, out_of_sync_items)
 
-    # option repunctuate everything
-    """print(" Repunctuating all items...")                    
-    punctuationModel = PunctuationModel()
-    for item in tqdm(collapsed_items):
-        repunctuated = punctuationModel.restore_punctuation(item.text)
-        update_word_texts(item, repunctuated, item.words)"""
     print(" Writing Output...")
-    output_items(input_dir, corrections, show_timestamps, format_string, max_speaker_width, collapsed_items)
+    output_items(input_dir, corrections, show_timestamps, max_speaker_width, collapsed_items)
     print("--------------------")
 
 def extract_all_chunks(names: Optional[Dict[str, str]], no_ellipses: bool, disfluent_comma: bool, no_asterisks: bool, file_names: List[str]) -> List[WtWord]:
@@ -248,7 +229,7 @@ def collapse_adjacent(normalized_items: List[WtWordList]) -> List[WtWordList]:
 
     return collapsed_items
 
-def get_out_of_sync_items(input_dir, format_string, max_speaker_width, collapsed_items):
+def get_out_of_sync_items(input_dir, max_speaker_width, collapsed_items):
     now_running_time = 0
     out_of_sync_items = []
 
@@ -295,7 +276,7 @@ def update_word_texts(word_list: WtWordList, new_text: str, original_words: List
                     original_word.text = new_word
                     break
 
-def output_items(input_dir, corrections, show_timestamps, format_string, max_speaker_width, collapsed_items):
+def output_items(input_dir, corrections, show_timestamps, max_speaker_width, collapsed_items):
     output_builder = []
 
     compiled = _compile_boundary_corrections(corrections) if corrections else []

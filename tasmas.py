@@ -11,11 +11,11 @@ except ImportError:
     readline = None
 from typing import Dict, Optional
 import torch
-import whisper_timestamped as whisper
 from configuration import get_configuration
 from recognize import recognize
 from assemble import assemble
 from summarize import summarize
+from storify import storify
 from utils import extract_speaker_name
 
 def json_string_or_path(json_string_or_path):
@@ -161,18 +161,23 @@ def main(args):
     print("--------------------")
     print()
 
-    check_cuda()
+    operation = config['operationMode']
+    extension = (config.get('extension') or 'ogg').strip()
+
+    # summarize/storify never touch audio, so skip the GPU check (and its torch
+    # usage) -- the check's own warning notes summarize is unaffected by CUDA.
+    audio_free_ops = ('summarize', 'storify')
+    if operation not in audio_free_ops:
+        check_cuda()
     corrections = load_corrections(config.get('corrections'), inputDir)
 
-    operation = config['operationMode']
     names = None
-    if operation != 'summarize':
-        # 'summarize' alone only needs transcript.txt (checked in summarize()); it
-        # doesn't touch per-speaker audio/words.json files, so skip this discovery
-        # and avoid forcing those files to still exist for a summarize-only run.
+    if operation not in audio_free_ops:
+        # summarize needs only transcript.txt and storify only per-session
+        # transcript.txt files; neither touches per-speaker audio/words.json, so
+        # skip this discovery and don't force those files to still exist.
         if operation in ['recognize', 'semiauto', 'fullauto']:
-            extension = config.get('extension')
-            check_names_extension = extension.strip() if extension else 'ogg'
+            check_names_extension = extension
         else:
             check_names_extension = 'words.json'
 
@@ -200,10 +205,16 @@ def main(args):
     local_context_tokens = config.get('localContextTokens', 32768)
     prompt_type = config.get('promptType')
     prompt_files = []
-    if operation in ['summarize', 'fullauto']:
+    # summarize, fullauto, and storify all call a text-generation backend.
+    if operation in ['summarize', 'fullauto', 'storify']:
         if use_local and use_subscription:
-            print("  --useLocal and --useSubscription are mutually exclusive -- pick one summarize backend.")
+            print("  --useLocal and --useSubscription are mutually exclusive -- pick one backend.")
             sys.exit()
+        if not use_local and not use_subscription and ((anthropic_api_key is None) or (anthropic_api_key == '')):
+            print(f"  Anthropic API key is required for {operation} operation mode (or pass --useSubscription / --useLocal to use an alternative backend).")
+            sys.exit()
+    # only summarize/fullauto use configurable prompt files; storify has its own.
+    if operation in ['summarize', 'fullauto']:
         if (prompt_type is None) or (prompt_type == ''):
             print("  Prompt Type is required for summarize (or fullauto) operation mode.")
             sys.exit()
@@ -211,16 +222,14 @@ def main(args):
         if not prompt_files:
             print("  At least one prompt file must be found for summarize (or fullauto) operation mode.")
             sys.exit()
-        if not use_local and not use_subscription and ((anthropic_api_key is None) or (anthropic_api_key == '')):
-            print("  Anthropic API key is required for summarize (or fullauto) operation mode (or pass --useSubscription / --useLocal to use an alternative backend).")
-            sys.exit()
 
     operation_modes = {
-        'recognize': lambda: recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')),
+        'recognize': lambda: recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType'), audio_ext=extension),
         'assemble': lambda: assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps),
         'summarize': lambda: summarize(inputDir, prompt_files, anthropic_api_key, use_subscription, use_local, local_model, local_host, local_context_tokens),
-        'semiauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps)],
-        'fullauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType')), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps), summarize(inputDir, prompt_files, anthropic_api_key, use_subscription, use_local, local_model, local_host, local_context_tokens)]
+        'semiauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType'), audio_ext=extension), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps)],
+        'fullauto': lambda: [recognize(inputDir, names, config['fast'], config.get('slow'), config.get('modelType'), audio_ext=extension), assemble(inputDir, corrections, names, no_ellipses, disfluent_comma, no_asterisks, show_timestamps), summarize(inputDir, prompt_files, anthropic_api_key, use_subscription, use_local, local_model, local_host, local_context_tokens)],
+        'storify': lambda: storify(inputDir, anthropic_api_key, use_subscription, use_local, local_model, local_host, local_context_tokens, config.get('rebuild', False))
     }
 
     print("--------------------")

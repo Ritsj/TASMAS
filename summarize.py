@@ -1,98 +1,22 @@
 import os
 import sys
-import asyncio
 import textwrap
-import anthropic
+import backends
 
-MODEL = "claude-opus-4-8"
 SYSTEM_PROMPT = "You are a chatbot which can summarize long transcripts."
 
-def do_summary(transcript, client, prompt_file):
+def _read_prompt(prompt_file):
     with open(prompt_file, 'r') as file:
-        prompt = file.read()
+        return file.read()
 
-    with client.messages.stream(
-        model=MODEL,
-        max_tokens=64000,
-        thinking={"type": "adaptive"},
-        system=SYSTEM_PROMPT,
-        messages=[
-            {"role": "user", "content": f'{prompt}{transcript}'},
-        ],
-    ) as stream:
-        message = stream.get_final_message()
-
-    return next(block.text for block in message.content if block.type == "text")
+def do_summary(transcript, client, prompt_file):
+    return backends.generate_via_api(client, SYSTEM_PROMPT, f'{_read_prompt(prompt_file)}{transcript}')
 
 def do_summary_via_subscription(transcript, prompt_file):
-    try:
-        from claude_agent_sdk import query, ClaudeAgentOptions, AssistantMessage, TextBlock
-    except ImportError:
-        print("  The claude-agent-sdk package is required for --useSubscription.")
-        print("  Install it with: pip install claude-agent-sdk")
-        print("  (Also requires the Claude Code CLI to be installed and logged in --")
-        print("   run `claude setup-token`, or just be logged in via `claude login`.)")
-        sys.exit(1)
-
-    with open(prompt_file, 'r') as file:
-        prompt = file.read()
-
-    async def run():
-        options = ClaudeAgentOptions(
-            model=MODEL,
-            system_prompt=SYSTEM_PROMPT,
-            tools=[],
-            max_turns=1,
-        )
-        text_parts = []
-        async for message in query(prompt=f'{prompt}{transcript}', options=options):
-            if isinstance(message, AssistantMessage):
-                for block in message.content:
-                    if isinstance(block, TextBlock):
-                        text_parts.append(block.text)
-        return ''.join(text_parts)
-
-    return asyncio.run(run())
+    return backends.generate_via_subscription(SYSTEM_PROMPT, f'{_read_prompt(prompt_file)}{transcript}')
 
 def do_summary_via_ollama(transcript, prompt_file, local_model, local_host, local_context_tokens):
-    try:
-        from ollama import Client
-    except ImportError:
-        print("  The ollama package is required for --useLocal.")
-        print("  Install it with: pip install ollama")
-        print("  (Also requires a local Ollama server -- `ollama serve` -- with the")
-        print(f"   model pulled: `ollama pull {local_model}`.)")
-        sys.exit(1)
-
-    with open(prompt_file, 'r') as file:
-        prompt = file.read()
-
-    # Rough token estimate: word count alone underestimates tokens (English
-    # runs ~1.3 tokens/word), so scale it up. Ollama truncates input that
-    # doesn't fit num_ctx rather than raising an error, so warn early instead
-    # of silently summarizing a truncated transcript.
-    word_count = len((prompt + transcript).split())
-    approx_tokens = int(word_count * 1.3)
-    if approx_tokens > local_context_tokens * 0.75:
-        print(f"  WARNING: this prompt is roughly {approx_tokens} tokens, close to or over the")
-        print(f"  configured context window ({local_context_tokens} tokens, --localContextTokens).")
-        print("  Ollama silently truncates input that doesn't fit rather than erroring --")
-        print("  consider raising --localContextTokens (memory permitting).")
-
-    print(f"  Generating with local Ollama model '{local_model}' -- this can be slow on CPU-only hardware.")
-
-    client = Client(host=local_host) if local_host else Client()
-
-    response = client.chat(
-        model=local_model,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f'{prompt}{transcript}'},
-        ],
-        options={"num_ctx": local_context_tokens},
-    )
-
-    return response.message.content
+    return backends.generate_via_ollama(SYSTEM_PROMPT, f'{_read_prompt(prompt_file)}{transcript}', local_model, local_host, local_context_tokens)
 
 def summarize(input_dir, prompt_files, anthropic_api_key, use_subscription=False, use_local=False, local_model="phi4-mini", local_host=None, local_context_tokens=32768):
 
@@ -121,19 +45,29 @@ def summarize(input_dir, prompt_files, anthropic_api_key, use_subscription=False
     if use_subscription:
         print("  Using your Claude subscription (via the Claude Agent SDK) instead of the API key.")
     elif not use_local:
-        client = anthropic.Anthropic(api_key=anthropic_api_key)
+        client = backends.make_api_client(anthropic_api_key)
 
+    failures = []
     for prompt_file in prompt_files:
         # Call your command here
         print()
         print(f"  - Prompt {prompt_file}...")
 
-        if use_local:
-            summary = do_summary_via_ollama(transcript, prompt_file, local_model, local_host, local_context_tokens)
-        elif use_subscription:
-            summary = do_summary_via_subscription(transcript, prompt_file)
-        else:
-            summary = do_summary(transcript, client, prompt_file)
+        # A single prompt failing (API error, timeout, model issue) shouldn't
+        # discard the summaries already produced -- report it and keep going.
+        # (SystemExit from the backend import checks intentionally propagates.)
+        try:
+            if use_local:
+                summary = do_summary_via_ollama(transcript, prompt_file, local_model, local_host, local_context_tokens)
+            elif use_subscription:
+                summary = do_summary_via_subscription(transcript, prompt_file)
+            else:
+                summary = do_summary(transcript, client, prompt_file)
+        except Exception as ex:
+            print(f"    ERROR: failed to summarize with {prompt_file}: {ex}")
+            print("    Skipping this prompt and continuing.")
+            failures.append(prompt_file)
+            continue
 
         filename = os.path.splitext(os.path.basename(prompt_file))[0].replace("prompt_", "")
         filename = f"summary_{filename}.txt"
@@ -157,4 +91,8 @@ def summarize(input_dir, prompt_files, anthropic_api_key, use_subscription=False
         print()
         print()
 
-
+    if failures:
+        print(f"  {len(failures)} of {len(prompt_files)} prompt{'s' if len(prompt_files) > 1 else ''} failed:")
+        for prompt_file in failures:
+            print(f"    - {prompt_file}")
+        print()

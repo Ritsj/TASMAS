@@ -2,12 +2,17 @@ import os
 import json
 import glob
 from typing import Dict, Optional
+import torch
 import whisper_timestamped as whisper
 
 from utils import extract_speaker_name
 
-def recognize(input_dir: str, names: Dict[str, str], fast: bool = False, slow: bool = False, model_type: Optional[str] = None, device: str = "cuda", audio_ext: str = "ogg"):
+def recognize(input_dir: str, names: Dict[str, str], fast: bool = False, slow: bool = False, model_type: Optional[str] = None, device: Optional[str] = None, audio_ext: str = "ogg"):
     model_type = "tiny" if fast else (model_type if model_type else ("medium" if slow else "small"))
+    # Fall back to CPU when CUDA is unavailable -- check_cuda() lets the user
+    # continue without a GPU, so don't hard-crash by forcing device="cuda".
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
     model = whisper.load_model(model_type, device=device)
 
     print()
@@ -32,7 +37,9 @@ def recognize(input_dir: str, names: Dict[str, str], fast: bool = False, slow: b
             print()
             continue
         else:
-            audio = whisper.load_audio(os.path.join(input_dir, audio_file))
+            # audio_file already includes input_dir (glob returns full paths);
+            # re-joining would double it for relative input dirs.
+            audio = whisper.load_audio(audio_file)
             if fast:
                 results = whisper.transcribe(
     model, audio,
@@ -69,7 +76,7 @@ def recognize(input_dir: str, names: Dict[str, str], fast: bool = False, slow: b
     compression_ratio_threshold=1.2,
 )
 
-            json_file = os.path.join(input_dir, audio_file + '.words.json')
+            json_file = audio_file + '.words.json'
             with open(json_file, 'w') as f:
                 f.write(json.dumps(results, ensure_ascii = False))
             print(f"  Saved to {json_file}")

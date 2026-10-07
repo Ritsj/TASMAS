@@ -14,9 +14,10 @@ and optionally get summaries of that transcript as well.
 
 
 # Operating Modes
-TASMAS has 3 operating modes, each of which can be executed independently,  
+TASMAS has 3 core operating modes, each of which can be executed independently,  
 as well as a `SEMIAUTO` mode which executes the first two modes in sequence (this is the recommended initial run),  
-and a `FULLAUTO` mode which executes all 3 (not recommended, as manual fix-up after stage 2 is usually a good idea).
+and a `FULLAUTO` mode which executes all 3 (not recommended, as manual fix-up after stage 2 is usually a good idea).  
+There is also a `STORIFY` mode which stitches many sessions' transcripts into one continuous story (see below).
 
 ## `RECOGNIZE`:
 
@@ -114,6 +115,29 @@ By default this uses the `phi4-mini` model (128K context window, ~2.5GB, small e
  - Use `--localHost` if your Ollama server isn't at the default `http://127.0.0.1:11434`.
 
 Expect this to be noticeably slower than the API or subscription paths, especially on CPU-only hardware — there's no timeout, but a 30-60K token summarization pass can take a while.
+
+## `STORIFY`:
+
+Where `SUMMARIZE` condenses a *single* session, `STORIFY` weaves *many* sessions into one continuous, novel-style story.
+
+Point it at a **campaign folder** whose subfolders are individual sessions, each containing a `transcript.txt` (as produced by `assemble`):
+
+```
+my-campaign/
+  session-01/  transcript.txt
+  session-02/  transcript.txt
+  session-03/  transcript.txt
+```
+
+```bash
+tasmas storify /mnt/c/recordings/my-campaign
+```
+
+Sessions are processed in natural order (so `session-2` comes before `session-10`). For each one, the **story so far** is carried forward as context so the next chapter stays continuous with everything before it — characters, places, tone, and open plot threads. The growing narrative is written to `my-campaign/story.md`.
+
+`STORIFY` is **incremental**: it records which sessions it has already told in `my-campaign/story.state.json`, so re-running after you add a new session only generates the new chapter(s) rather than paying to regenerate the whole story. Pass `--rebuild` (or delete `story.state.json`) to regenerate from scratch — useful if you change earlier transcripts. If a session fails mid-run, chapters completed so far are saved and re-running resumes from where it stopped.
+
+`STORIFY` builds directly from each session's raw `transcript.txt` (not its summaries), and shares the same backends as `SUMMARIZE`: the Claude API by default, or `--useSubscription` / `--useLocal` (with the same `--local*` options). Note that the story so far is re-sent as context each session, so on a local model with a small context window keep an eye on `--localContextTokens` as a campaign grows long.
 
 # Usage
 

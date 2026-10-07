@@ -4,14 +4,20 @@ setup(name='tasmas',
       version='0.1',    
       author='Kadda OK',
       description='TASMAS (Transcribe And Summarize Multiple Audio Stems) transcribes and interleaves per-speaker audio recordings into a single threaded transcript, which it can optionally then summarize.',
-      py_modules=['tasmas', 'assemble', 'configuration', 'recognize', 'summarize', 'utils'],
+      py_modules=['tasmas', 'assemble', 'configuration', 'recognize', 'summarize', 'storify', 'backends', 'utils'],
       install_requires=[
         'whisper_timestamped',
         'auditok',
         'deepmultilingualpunctuation',
         'anthropic',
-        'silero-vad'
+        'silero-vad',
+        'torch'
       ],
+      extras_require={
+        # Optional summarize backends (see --useSubscription / --useLocal).
+        'subscription': ['claude-agent-sdk'],
+        'local': ['ollama'],
+      },
       entry_points={
         'console_scripts': [
           'tasmas=tasmas:main'
